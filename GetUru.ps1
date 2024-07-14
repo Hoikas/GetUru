@@ -33,78 +33,8 @@ if ($PSVersionTable.PSVersion.Major -le 5) {
     $ProgressPreference = "SilentlyContinue"
 }
 
-$DownloadDir = "$InstallDir/downloads"
-$AssetsDir = "$InstallDir/moul-assets"
-$ClientDir = "$InstallDir/client"
-$ClientShortcutPath = "$InstallDir/Start Uru.lnk"
-
-$GitDownloadURL = "https://github.com/git-for-windows/git/releases/download/v2.45.2.windows.1/MinGit-2.45.2-busybox-32-bit.zip"
-$GitDownloadFilename = "MinGit-2.45.2-busybox-32-bit.zip"
-$GitHash = "9e8ede5629d928f943909f0f3225b27716bdaa95018a3c6cf6276fbc99ee19da"
-$GitPath = "cmd/git.exe"
-
-$ClientDownloadURL = "https://github.com/H-uru/Plasma/releases/download/last-successful/plasma-windows-x86-internal-release.zip"
-$ClientDownloadFilename = "plasma-windows-x86-internal-release.zip"
-
-$AssetsRevFile = "$DownloadDir/moul-assets.rev"
-
-function Install-Program($cmd, $forcedl, $name, $url, $filename, $hash, $cmdpath) {
-    Write-Host -ForegroundColor Cyan "Checking for $name..."
-    if (!$forcedl) {
-        $maybecmd = Get-Command $cmd
-        if ($maybecmd) {
-            Write-Host -ForegroundColor Green "... found $($maybecmd.Path)"
-            return $maybecmd.Path
-        }
-    }
-
-    try {
-        Push-Location $DownloadDir
-
-        if (Test-Path $filename -PathType Leaf) {
-            Write-Host -ForegroundColor Yellow "... already downloaded $filename"
-        } else {
-            Write-Host -ForegroundColor Cyan "... downloading $name"
-            Invoke-WebRequest $url -OutFile $filename | Write-Output
-            $filehash = $(Get-FileHash $filename).Hash
-            if ($filehash -ne $hash) {
-                Remove-Item $filename
-                throw "Hash validation failure for $filename$newline`Expected: $hash$newline`Actual: $filehash";
-            }
-        }
-
-        $zipname = (Get-Item $filename).BaseName
-        $progpath = "$zipname/$cmdpath"
-        if (Test-Path $progpath -PathType Leaf) {
-            Write-Host -ForegroundColor Green "... found $progpath"
-            return "$(Get-Location)/$progpath"
-        } elseif (Test-Path $zipname -PathType Container) {
-            Write-Host -ForegroundColor Yellow "... already extracted $zipname but the program is missing? Deleting..."
-            Remove-Item $zipname -Recurse
-        }
-
-        Expand-Archive -Path $filename -DestinationPath $zipname | Write-Output
-        return "$(Get-Location)/$progpath"
-    } finally {
-        Pop-Location
-    }
-}
-
-function New-Shortcut($Path, $Target, $Arguments) {
-    $shell = New-Object -ComObject WScript.Shell
-    $shortcut = $shell.CreateShortcut($Path)
-    $shortcut.TargetPath = $Target
-    $shortcut.Arguments = $Arguments
-    $shortcut.WorkingDirectory = $(Get-Item $Target).Directory.FullName
-    $shortcut.Save()
-}
-
-function Move-DirSafe($Path, $Destination) {
-    if (!(Test-Path -PathType Container -Path $Destination)) {
-        New-Item -ItemType Directory -Path $Destination | Out-Null
-    }
-    Move-Item -Path $Path -Destination $Destination -Force
-}
+# Pull in common definitions and functions.
+Import-Module -Force "$PSScriptRoot/Common.ps1"
 
 # Bombs away!
 if ($Clean) {
