@@ -14,7 +14,7 @@
 #    along with GetUru.  If not, see <http://www.gnu.org/licenses/>.
 
 $DownloadDir = "$InstallDir/downloads"
-$AssetsDir = "$InstallDir/moul-assets"
+$AssetsDir = "$InstallDir/downloads/moul-assets"
 $ClientDir = "$InstallDir/client"
 $ClientShortcutPath = "$InstallDir/Start Uru.lnk"
 
