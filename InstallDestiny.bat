@@ -18,8 +18,8 @@
 :: Prefer to use PowerShell Core, if it's available.
 WHERE /Q pwsh.exe
 IF %ERRORLEVEL% EQU 0 (
-    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File GetUruClient.ps1 -Destiny
+    pwsh.exe -NoProfile -ExecutionPolicy Bypass -File GetUruClient.ps1 -Destiny -Force32Bit
 ) ELSE (
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File GetUruClient.ps1 -Destiny
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File GetUruClient.ps1 -Destiny -Force32Bit
 )
 PAUSE

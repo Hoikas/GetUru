@@ -23,8 +23,10 @@ $GitDownloadFilename = "MinGit-2.45.2-busybox-32-bit.zip"
 $GitHash = "9e8ede5629d928f943909f0f3225b27716bdaa95018a3c6cf6276fbc99ee19da"
 $GitPath = "cmd/git.exe"
 
-$ClientDownloadURL = "https://github.com/H-uru/Plasma/releases/download/last-successful/plasma-windows-x86-internal-release.zip"
-$ClientDownloadFilename = "plasma-windows-x86-internal-release.zip"
+$Client32DownloadURL = "https://github.com/H-uru/Plasma/releases/download/last-successful/plasma-windows-x86-internal-release.zip"
+$Client32DownloadFilename = "plasma-windows-x86-internal-release.zip"
+$Client64DownloadURL = "https://github.com/H-uru/Plasma/releases/download/last-successful/plasma-windows-x64-internal-release.zip"
+$Client64DownloadFilename = "plasma-windows-x64-internal-release.zip"
 
 $AssetsRevFile = "$DownloadDir/moul-assets.rev"
 

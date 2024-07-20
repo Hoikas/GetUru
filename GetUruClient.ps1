@@ -20,6 +20,8 @@ param(
 
     [switch]$ForceMinGit,
 
+    [switch]$Force32Bit,
+
     [switch]$Clean
 )
 
@@ -35,6 +37,19 @@ if ($PSVersionTable.PSVersion.Major -le 5) {
 
 # Pull in common definitions and functions.
 Import-Module -Force "$PSScriptRoot/Common.ps1"
+
+# Decide whether or not we should use the 32 or 64 bit clients.
+if ($Force32Bit -or ($Env:PROCESSOR_ARCHITECTURE -eq "X86")) {
+    Write-Host -ForegroundColor Yellow "Selecting 32-bit Uru Client..."
+    $ClientDownloadFilename = $Client32DownloadFilename
+    $ClientDownloadURL = $Client32DownloadURL
+} elseif ($Env:PROCESSOR_ARCHITECTURE -eq "AMD64") {
+    Write-Host -ForegroundColor Yellow "Selecting 64-bit Uru Client..."
+    $ClientDownloadFilename = $Client64DownloadFilename
+    $ClientDownloadURL = $Client64DownloadURL
+} else {
+    throw "Unsupported processor architecture $Env:PROCESSOR_ARCHITECTURE"
+}
 
 # Bombs away!
 if ($Clean) {
