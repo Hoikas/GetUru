@@ -33,10 +33,12 @@ $AssetsRevFile = "$DownloadDir/moul-assets.rev"
 function Install-Program($cmd, $forcedl, $name, $url, $filename, $hash, $cmdpath) {
     Write-Host -ForegroundColor Cyan "Checking for $name..."
     if (!$forcedl) {
-        $maybecmd = Get-Command $cmd
-        if ($maybecmd) {
+        try {
+            $maybecmd = Get-Command $cmd
             Write-Host -ForegroundColor Green "... found $($maybecmd.Path)"
             return $maybecmd.Path
+        } catch {
+            # No worries, we'll handle not finding the command later.
         }
     }
 
