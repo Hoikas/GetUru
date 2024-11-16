@@ -20,6 +20,8 @@ param(
 
     [switch]$ForceMinGit,
 
+    [switch]$ForceLocalLfs,
+
     [switch]$Force32Bit,
 
     [switch]$Clean
@@ -87,6 +89,7 @@ if (Test-Path -Path $AssetsDir -PathType Container) {
 
 # Check for git. If we don't have git installed, then we need to download it.
 $GitExe = Install-Program "git" $ForceMinGit "Git" $GitDownloadURL $GitDownloadFilename $GitHash $GitPath
+$GitLfsExe = Install-Program "git-lfs" $ForceLocalLFS "Git-LFS" $GitLfsDownloadURL $GitLfsDownloadFilename $GitLfsHash $GitLfsPath
 
 # Download the latest game client.
 $ClientZipPath = "$DownloadDir/$ClientDownloadFilename"
@@ -119,6 +122,10 @@ Write-Host -ForegroundColor Cyan "Updating game assets..."
 &$GitExe clone "https://github.com/H-uru/moul-assets.git" --no-checkout $AssetsDir --depth 1
 try {
     Push-Location $AssetsDir
+    $OldPath = $Env:PATH
+
+    # Ensure that git-lfs (the one we care about) is on the PATH.
+    $Env:PATH = "$(Split-Path -Parent -Path $GitLfsExe);$Env:PATH"
 
     # Before we check out (read: download) all of the assets, compare the HEAD revision with the last
     # revision that we fetched. Only checkout if the revision is different.
@@ -155,6 +162,7 @@ try {
         Write-Host -ForegroundColor Green "... game assets already up-to-date!"
     }
 } finally {
+    $Env:PATH = $OldPath
     Pop-Location
 }
 

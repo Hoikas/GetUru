@@ -23,6 +23,11 @@ $GitDownloadFilename = "MinGit-2.45.2-busybox-32-bit.zip"
 $GitHash = "9e8ede5629d928f943909f0f3225b27716bdaa95018a3c6cf6276fbc99ee19da"
 $GitPath = "cmd/git.exe"
 
+$GitLfsDownloadURL = "https://github.com/git-lfs/git-lfs/releases/download/v3.5.1/git-lfs-windows-386-v3.5.1.zip"
+$GitLfsDownloadFilename = "git-lfs-windows-386-v3.5.1.zip"
+$GitLfsHash = "ea5138789c4f19ed71d30c3e407f43bd270771028d37e5292378a8ea2c154377"
+$GitLfsPath = "git-lfs-3.5.1/git-lfs.exe"
+
 $Client32DownloadURL = "https://github.com/H-uru/Plasma/releases/download/last-successful/plasma-windows-x86-internal-release.zip"
 $Client32DownloadFilename = "plasma-windows-x86-internal-release.zip"
 $Client64DownloadURL = "https://github.com/H-uru/Plasma/releases/download/last-successful/plasma-windows-x64-internal-release.zip"
