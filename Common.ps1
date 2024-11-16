@@ -54,7 +54,12 @@ function Install-Program($cmd, $forcedl, $name, $url, $filename, $hash, $cmdpath
             Write-Host -ForegroundColor Yellow "... already downloaded $filename"
         } else {
             Write-Host -ForegroundColor Cyan "... downloading $name"
-            Invoke-WebRequest $url -OutFile $filename | Write-Output
+            if ($PSVersionTable.PSVersion.Major -ge 3) {
+                Invoke-WebRequest $url -OutFile $filename | Write-Output
+            } else {
+                $client = New-Object System.Net.WebClient
+                $client.DownloadFile($url, $filename)
+            }
             $filehash = $(Get-FileHash $filename).Hash
             if ($filehash -ne $hash) {
                 Remove-Item $filename

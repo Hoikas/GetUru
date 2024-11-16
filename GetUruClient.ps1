@@ -37,6 +37,17 @@ if ($PSVersionTable.PSVersion.Major -le 5) {
     $ProgressPreference = "SilentlyContinue"
 }
 
+if ($PSVersionTable.PSVersion.Major -lt 5) {
+    Write-Host -ForegroundColor White -BackgroundColor Red "WARNING: Your PowerShell version is $($PSVersionTable.PSVersion.Major).$($PSVersionTable.PSVersion.Minor)"
+    Write-Host -ForegroundColor White -BackgroundColor Red "This is very old and may not work correctly with GetUru!"
+    Write-Host -ForegroundColor White -BackgroundColor Red "Please consider upgrading to PowerShell Core: https://github.com/PowerShell/PowerShell"
+    Write-Host ""
+}
+
+if ($PSVersionTable.PSVersion.Major -lt 3) {
+    $PSScriptRoot = Split-Path -Parent -Path $($MyInvocation.MyCommand.Path)
+}
+
 # Pull in common definitions and functions.
 Import-Module -Force "$PSScriptRoot/Common.ps1"
 
