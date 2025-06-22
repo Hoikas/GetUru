@@ -1,0 +1,305 @@
+#!/bin/sh
+
+#    This file is part of GetUru.
+#
+#    GetUru is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    GetUru is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with GetUru.  If not, see <http://www.gnu.org/licenses/>.
+
+color_on() {
+    test ! -z "${CLICOLOR_FORCE}" -a "${CLICOLOR_FORCE}" != 0 && return 0
+    test "${CLICOLOR}" = "0" -o ! -z "${NO_COLOR}" && return 1
+    test -t 1 && return 0
+    return 1
+}
+TPUT=$(command -v tput)
+test -x "${TPUT}" && color_on || TPUT=true
+
+tput() {
+    case "$1" in
+        off )     "${TPUT}" sgr0    2>/dev/null || true ;;
+        red )     "${TPUT}" setaf 1 2>/dev/null || true ;;
+        green )   "${TPUT}" setaf 2 2>/dev/null || true ;;
+        yellow )  "${TPUT}" setaf 3 2>/dev/null || true ;;
+        cyan )    "${TPUT}" setaf 6 2>/dev/null || true ;;
+        under )   "${TPUT}" smul    2>/dev/null || true ;;
+        * )       "${TPUT}" $@      2>/dev/null || true ;;
+    esac
+}
+
+INSTALL_DIR=$PWD
+FORCE_32BIT=false
+DESTINY=false
+FORCE_WINDOWS=false
+MACHINE_ARCH=$(uname -m)
+
+if [ -z "$OSTYPE" ]; then
+    OSTYPE=$(uname -s)
+fi
+
+
+# Help/Usage string
+USAGE="Uru client download utility
+    $0 [OPTIONS]
+
+$(tput bold)REQUIREMENTS$(tput off)
+    The GetUru script requires the following command-line tools be available
+    on the path: $(tput bold)curl$(tput off), $(tput bold)git$(tput off), and $(tput bold)git-lfs$(tput off).
+
+$(tput bold)OPTIONS$(tput off)
+    $(tput bold)-i$(tput off) $(tput under)DIR$(tput off), $(tput bold)--install-dir$(tput off) $(tput under)DIR$(tput off)
+            Specifies the directory into which the Uru client will be copied.
+            The client will be installed to a subdirectory named 'client' of
+            this path. Defaults to the current working directory.
+
+    $(tput bold)-w$(tput off), $(tput bold)--windows$(tput off), $(tput bold)--wine$(tput off)
+            Specifies that the Windows client should be downloaded instead of
+            the platform-native client for the current system. This is always
+            true on Linux (where a platform-native client is not yet usable).
+            The Windows client can be run on macOS and Linux using wine.
+
+    $(tput bold)-32$(tput off), $(tput bold)--force-32bit$(tput off)
+            Force the download of a 32-bit Windows client. This has no effect
+            unless $(tput bold)--windows$(tput off) is also specified. The official game client is a
+            32-bit Windows client.
+
+    $(tput bold)--destiny$(tput off)
+            Setup the Destiny testing shard as the default server.ini file for
+            the installed client's server configuration.
+"
+
+
+while true; do
+    case "$(echo $1 | tr '[A-Z]' '[a-z]')" in
+        --install-dir | --installdir | -installdir | -i )
+            INSTALL_DIR=$2
+            shift 2
+            ;;
+        --wine | --windows | -windows | -wine | -w )
+            FORCE_WINDOWS=true
+            shift
+            ;;
+        --force-32bit | --force32bit | -force32bit | -32 )
+            FORCE_32BIT=true
+            shift
+            ;;
+        --destiny )
+            DESTINY=true
+            shift
+            ;;
+        --verbose | -v )
+            set -x
+            shift
+            ;;
+        --help | -help | -h | -? )
+            echo "$USAGE"
+            exit 0
+            ;;
+        -- )
+            shift
+            break
+            ;;
+        * )
+            break
+            ;;
+    esac
+done
+
+DOWNLOAD_DIR="$INSTALL_DIR/downloads"
+ASSETS_DIR="$INSTALL_DIR/downloads/moul-assets"
+CLIENT_DIR="$INSTALL_DIR/client"
+
+ASSETS_REV_FILE="$DOWNLOAD_DIR/moul-assets.rev"
+
+# We don't have a working Linux client, so on non-macOS systems just install
+# the Windows client to run through wine.
+if [ "$(echo $OSTYPE | cut -c 1-6)" != "darwin" ]; then
+    FORCE_WINDOWS=true
+fi
+
+if [ "$FORCE_WINDOWS" = true ]; then
+    if [ "$FORCE_32BIT" = true ] || [ "$MACHINE_ARCH" != "x86_64" ]; then
+        CLIENT_DOWNLOAD_FILENAME="plasma-windows-x86-internal-release.zip"
+    else
+        CLIENT_DOWNLOAD_FILENAME="plasma-windows-x64-internal-release.zip"
+    fi
+elif [ "$(echo $OSTYPE | cut -c 1-6)" = "darwin" ]; then
+    if [ "$MACHINE_ARCH" = "arm64" ]; then
+        CLIENT_DOWNLOAD_FILENAME="plasma-macos-arm64-internal-release.zip"
+    else
+        CLIENT_DOWNLOAD_FILENAME="plasma-macos-x64-internal-release.zip"
+    fi
+else
+    echo "$(tput red)Unsupported system $OSTYPE$(tput off)"
+    exit 2
+fi
+
+
+echo "Running GetUru on $OSTYPE ($MACHINE_ARCH)"
+echo ""
+
+# Check for required software (cURL, Git, Git LFS)
+echo "$(tput cyan)Checking for cURL...$(tput off)"
+if [ -f "$(command -v curl)" ]; then
+    echo "    $(tput green)... found$(tput off)"
+else
+    echo "    $(tput red)... not found. cURL is required$(tput off)"
+    exit 1
+fi
+
+echo "$(tput cyan)Checking for Git...$(tput off)"
+if [ -f "$(command -v git)" ]; then
+    echo "    $(tput green)... found$(tput off)"
+else
+    echo "    $(tput red)... not found. Git is required$(tput off)"
+    exit 1
+fi
+
+echo "$(tput cyan)Checking for Git LFS...$(tput off)"
+if [ -f "$(command -v git-lfs)" ]; then
+    echo "    $(tput green)... found$(tput off)"
+else
+    echo "    $(tput red)... not found. Git LFS is required$(tput off)"
+    exit 1
+fi
+
+if [ "$FORCE_WINDOWS" = true ]; then
+    echo "$(tput cyan)Checking for wine...$(tput off)"
+    if [ -f "$(command -v wine)" ]; then
+        echo "    $(tput green)... found$(tput off)"
+    else
+        echo "    $(tput red)... not found. To run Windows executables, wine is required$(tput off)"
+        exit 1
+    fi
+fi
+
+
+# Prepare output directories before we get started.
+if [ ! -d "$INSTALL_DIR" ]; then
+    echo "$(tput red)The specified install directory '$INSTALL_DIR' does not exist or is not valid!$(tput off)"
+    exit 3
+fi
+
+if [ ! -d "$DOWNLOAD_DIR" ]; then
+    mkdir -p "$DOWNLOAD_DIR"
+fi
+
+
+# The goal here is to *install* Uru. While we will be using git to facilitate acquiring
+# files, we don't actually care about maintaining a copy of the repos themselves. So,
+# if they already exist, nuke them. An potential improvement would be to let the
+# empty sparse checkout remain behind and check for updates as needed.
+if [ -d "$ASSETS_DIR" ]; then
+    echo "$(tput yellow)Deleting stale game assets directory $ASSETS_DIR$(tput off)"
+    rm -rf "$ASSETS_DIR";
+fi
+
+
+# Download the latest game client.
+CLIENT_ZIP_PATH="$DOWNLOAD_DIR/$CLIENT_DOWNLOAD_FILENAME"
+if [ -f "$CLIENT_ZIP_PATH" ]; then
+    echo "$(tput yellow)Deleting stale Plasma download $(basename $CLIENT_ZIP_PATH)...$(tput off)"
+    rm -f $CLIENT_ZIP_PATH
+fi
+
+CLIENT_DOWNLOAD_URL="https://github.com/H-uru/Plasma/releases/download/last-successful/$CLIENT_DOWNLOAD_FILENAME"
+echo "$(tput cyan)Downloading Plasma from $CLIENT_DOWNLOAD_URL...$(tput off)"
+curl -L "$CLIENT_DOWNLOAD_URL" --output "$CLIENT_ZIP_PATH"
+
+if [ ! -d "$CLIENT_DIR" ]; then
+    mkdir -p "$CLIENT_DIR"
+fi
+
+CLIENT_UNZIP_PATH="$DOWNLOAD_DIR/$(basename "$CLIENT_DOWNLOAD_FILENAME" .zip)"
+if [ -d "$CLIENT_UNZIP_PATH" ]; then
+    echo "$(tput cyan)Removing stale Plasma directory $CLIENT_UNZIP_PATH...$(tput off)"
+    rm -rf "$CLIENT_UNZIP_PATH"
+fi
+unzip "$CLIENT_ZIP_PATH" -d "$CLIENT_UNZIP_PATH" > /dev/null
+
+
+# Copy only the client files over
+echo "$(tput cyan)Copying game client...$(tput off)"
+cp -R -f "$CLIENT_UNZIP_PATH"/client/* "$CLIENT_DIR/"
+echo "    $(tput green)... game client copied to $CLIENT_DIR$(tput off)"
+
+if [ ! -d "$CLIENT_DIR/avi" ]; then
+    mkdir -p "$CLIENT_DIR/avi"
+fi
+if [ ! -d "$CLIENT_DIR/dat" ]; then
+    mkdir -p "$CLIENT_DIR/dat"
+fi
+if [ ! -d "$CLIENT_DIR/sfx" ]; then
+    mkdir -p "$CLIENT_DIR/sfx"
+fi
+
+# Grab the assets
+echo "$(tput cyan)Updating game assets...$(tput off)"
+git clone "https://github.com/H-uru/moul-assets.git" --no-checkout "$ASSETS_DIR" --depth 1
+
+pushd "$ASSETS_DIR"
+
+CURR_ASSETS_REV=$(git rev-parse HEAD)
+if [ -f "$ASSETS_REV_FILE" ]; then
+    PREV_ASSETS_REV=$(cat "$ASSETS_REV_FILE")
+else
+    PREV_ASSETS_REV="(none)"
+fi
+
+echo "$(tput yellow)Comparing assets repository revisions...$(tput off)"
+echo "    $(tput yellow)... Latest revision: $CURR_ASSETS_REV$(tput off)"
+echo "    $(tput yellow)... Previous revision: $PREV_ASSETS_REV$(tput off)"
+
+if [ "$PREV_ASSETS_REV" != "$CURR_ASSETS_REV" ]; then
+    echo "    $(tput cyan)... downloading new game assets revision...$(tput off)"
+    git lfs install --local
+    git sparse-checkout init
+    git sparse-checkout set compiled/avi compiled/dat compiled/sfx
+    git checkout
+    echo "    $(tput green)... downloaded game assets to $ASSETS_DIR$(tput off)"
+
+    echo "    $(tput cyan)... installing game assets$(tput off)"
+    cp -R -f "$ASSETS_DIR"/compiled/avi/* "$CLIENT_DIR/avi/"
+    cp -R -f "$ASSETS_DIR"/compiled/dat/* "$CLIENT_DIR/dat/"
+    cp -R -f "$ASSETS_DIR"/compiled/sfx/* "$CLIENT_DIR/sfx/"
+
+    echo "$CURR_ASSETS_REV" > "$ASSETS_REV_FILE"
+else
+    echo "    $(tput green)... game assets already up-to-date!$(tput off)"
+fi
+
+popd
+
+
+# No need to keep the assets repo around, so clean it up.
+echo "$(tput cyan)Cleaning up...$(tput off)"
+rm -rf "$ASSETS_DIR"
+
+
+echo "$(tput cyan)Preparing client...$(tput off)"
+if [ "$DESTINY" = true ]; then
+    cp "$(dirname "$0")/server_destiny.ini" "$CLIENT_DIR/server.ini"
+fi
+
+
+pushd "$CLIENT_DIR"
+
+# Create a "launcher app" for macOS
+if [ "$(echo $OSTYPE | cut -c 1-6)" = "darwin" ]; then
+    if [ "$FORCE_WINDOWS" = true ]; then
+        osacompile -o "Start Uru.app" -e 'do shell script "wine plClient.exe --LocalData"'
+    else
+        osacompile -o "Start Uru.app" -e 'do shell script "open -a plClient.app --args --LocalData"'
+    fi
+fi
+
+popd
