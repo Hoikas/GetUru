@@ -32,7 +32,7 @@ tput() {
         yellow )  "${TPUT}" setaf 3 2>/dev/null || true ;;
         cyan )    "${TPUT}" setaf 6 2>/dev/null || true ;;
         under )   "${TPUT}" smul    2>/dev/null || true ;;
-        * )       "${TPUT}" $@      2>/dev/null || true ;;
+        * )       "${TPUT}" "$@"    2>/dev/null || true ;;
     esac
 }
 
@@ -79,9 +79,9 @@ $(tput bold)OPTIONS$(tput off)
 
 
 while true; do
-    case "$(echo $1 | tr '[A-Z]' '[a-z]')" in
+    case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
         --install-dir | --installdir | -installdir | -i )
-            INSTALL_DIR=$2
+            INSTALL_DIR="$2"
             shift 2
             ;;
         --wine | --windows | -windows | -wine | -w )
@@ -100,7 +100,7 @@ while true; do
             set -x
             shift
             ;;
-        --help | -help | -h | -? )
+        --help | -help | -h | -\? )
             echo "$USAGE"
             exit 0
             ;;
@@ -122,7 +122,7 @@ ASSETS_REV_FILE="$DOWNLOAD_DIR/moul-assets.rev"
 
 # We don't have a working Linux client, so on non-macOS systems just install
 # the Windows client to run through wine.
-if [ "$(echo $OSTYPE | cut -c 1-6)" != "darwin" ]; then
+if [ "$(echo "$OSTYPE" | cut -c 1-6)" != "darwin" ]; then
     FORCE_WINDOWS=true
 fi
 
@@ -132,7 +132,7 @@ if [ "$FORCE_WINDOWS" = true ]; then
     else
         CLIENT_DOWNLOAD_FILENAME="plasma-windows-x64-internal-release.zip"
     fi
-elif [ "$(echo $OSTYPE | cut -c 1-6)" = "darwin" ]; then
+elif [ "$(echo "$OSTYPE" | cut -c 1-6)" = "darwin" ]; then
     if [ "$MACHINE_ARCH" = "arm64" ]; then
         CLIENT_DOWNLOAD_FILENAME="plasma-macos-arm64-internal-release.zip"
     else
@@ -207,8 +207,8 @@ fi
 # Download the latest game client.
 CLIENT_ZIP_PATH="$DOWNLOAD_DIR/$CLIENT_DOWNLOAD_FILENAME"
 if [ -f "$CLIENT_ZIP_PATH" ]; then
-    echo "$(tput yellow)Deleting stale Plasma download $(basename $CLIENT_ZIP_PATH)...$(tput off)"
-    rm -f $CLIENT_ZIP_PATH
+    echo "$(tput yellow)Deleting stale Plasma download $(basename "$CLIENT_ZIP_PATH")...$(tput off)"
+    rm -f "$CLIENT_ZIP_PATH"
 fi
 
 CLIENT_DOWNLOAD_URL="https://github.com/H-uru/Plasma/releases/download/last-successful/$CLIENT_DOWNLOAD_FILENAME"
@@ -246,38 +246,38 @@ fi
 echo "$(tput cyan)Updating game assets...$(tput off)"
 git clone "https://github.com/H-uru/moul-assets.git" --no-checkout "$ASSETS_DIR" --depth 1
 
-pushd "$ASSETS_DIR"
+(
+    cd "$ASSETS_DIR" || exit
 
-CURR_ASSETS_REV=$(git rev-parse HEAD)
-if [ -f "$ASSETS_REV_FILE" ]; then
-    PREV_ASSETS_REV=$(cat "$ASSETS_REV_FILE")
-else
-    PREV_ASSETS_REV="(none)"
-fi
+    CURR_ASSETS_REV=$(git rev-parse HEAD)
+    if [ -f "$ASSETS_REV_FILE" ]; then
+        PREV_ASSETS_REV=$(cat "$ASSETS_REV_FILE")
+    else
+        PREV_ASSETS_REV="(none)"
+    fi
 
-echo "$(tput yellow)Comparing assets repository revisions...$(tput off)"
-echo "    $(tput yellow)... Latest revision: $CURR_ASSETS_REV$(tput off)"
-echo "    $(tput yellow)... Previous revision: $PREV_ASSETS_REV$(tput off)"
+    echo "$(tput yellow)Comparing assets repository revisions...$(tput off)"
+    echo "    $(tput yellow)... Latest revision: $CURR_ASSETS_REV$(tput off)"
+    echo "    $(tput yellow)... Previous revision: $PREV_ASSETS_REV$(tput off)"
 
-if [ "$PREV_ASSETS_REV" != "$CURR_ASSETS_REV" ]; then
-    echo "    $(tput cyan)... downloading new game assets revision...$(tput off)"
-    git lfs install --local
-    git sparse-checkout init
-    git sparse-checkout set compiled/avi compiled/dat compiled/sfx
-    git checkout
-    echo "    $(tput green)... downloaded game assets to $ASSETS_DIR$(tput off)"
+    if [ "$PREV_ASSETS_REV" != "$CURR_ASSETS_REV" ]; then
+        echo "    $(tput cyan)... downloading new game assets revision...$(tput off)"
+        git lfs install --local
+        git sparse-checkout init
+        git sparse-checkout set compiled/avi compiled/dat compiled/sfx
+        git checkout
+        echo "    $(tput green)... downloaded game assets to $ASSETS_DIR$(tput off)"
 
-    echo "    $(tput cyan)... installing game assets$(tput off)"
-    cp -R -f "$ASSETS_DIR"/compiled/avi/* "$CLIENT_DIR/avi/"
-    cp -R -f "$ASSETS_DIR"/compiled/dat/* "$CLIENT_DIR/dat/"
-    cp -R -f "$ASSETS_DIR"/compiled/sfx/* "$CLIENT_DIR/sfx/"
+        echo "    $(tput cyan)... installing game assets$(tput off)"
+        cp -R -f "$ASSETS_DIR"/compiled/avi/* "$CLIENT_DIR/avi/"
+        cp -R -f "$ASSETS_DIR"/compiled/dat/* "$CLIENT_DIR/dat/"
+        cp -R -f "$ASSETS_DIR"/compiled/sfx/* "$CLIENT_DIR/sfx/"
 
-    echo "$CURR_ASSETS_REV" > "$ASSETS_REV_FILE"
-else
-    echo "    $(tput green)... game assets already up-to-date!$(tput off)"
-fi
-
-popd
+        echo "$CURR_ASSETS_REV" > "$ASSETS_REV_FILE"
+    else
+        echo "    $(tput green)... game assets already up-to-date!$(tput off)"
+    fi
+)
 
 
 # No need to keep the assets repo around, so clean it up.
@@ -290,16 +290,15 @@ if [ "$DESTINY" = true ]; then
     cp "$(dirname "$0")/server_destiny.ini" "$CLIENT_DIR/server.ini"
 fi
 
-
-pushd "$CLIENT_DIR"
-
 # Create a "launcher app" for macOS
-if [ "$(echo $OSTYPE | cut -c 1-6)" = "darwin" ]; then
-    if [ "$FORCE_WINDOWS" = true ]; then
-        osacompile -o "Start Uru.app" -e 'do shell script "wine plClient.exe --LocalData"'
-    else
-        osacompile -o "Start Uru.app" -e 'do shell script "open -a plClient.app --args --LocalData"'
-    fi
-fi
+if [ "$(echo "$OSTYPE" | cut -c 1-6)" = "darwin" ]; then
+    (
+        cd "$CLIENT_DIR" || exit
 
-popd
+        if [ "$FORCE_WINDOWS" = true ]; then
+            osacompile -o "Start Uru.app" -e 'do shell script "wine plClient.exe --LocalData"'
+        else
+            osacompile -o "Start Uru.app" -e 'do shell script "open -a plClient.app --args --LocalData"'
+        fi
+    )
+fi
