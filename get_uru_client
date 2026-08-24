@@ -295,6 +295,17 @@ if [ "$(echo "$OSTYPE" | cut -c 1-6)" = "darwin" ]; then
     (
         cd "$CLIENT_DIR" || exit
 
+        # Remove the quarantine attribute on the downloaded file to avoid translocation issues loading server.ini
+        xattr -r -d com.apple.quarantine plClient.app
+
+        # If the client doesn't have a proper codesigning signature, do a local ad-hoc one
+        if [ -f "$(command -v codesign)" ]; then
+            if ! codesign -v "$APP_PATH" >/dev/null 2>&1; then
+                echo "$(tput cyan)Invalid codesigning signature. Re-signing the bundle ad-hoc for local environment...$(tput off)"
+                codesign --force --deep --sign - plClient.app
+            fi
+        fi
+
         if [ "$FORCE_WINDOWS" = true ]; then
             osacompile -o "Start Uru.app" -e 'do shell script "wine plClient.exe --LocalData"'
         else
